@@ -22,6 +22,7 @@
     <ClCompile Include="Source.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Matrix.hpp" />
     <ClInclude Include="Observer.hpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

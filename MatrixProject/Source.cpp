@@ -1,39 +1,8 @@
 #include<iostream>
 #include<string>
 #include<vector>
-#include "Observer.hpp"
-
-class Apple : public ObservableObject<Apple>
-{
-public:
-	Apple(){}
-	Apple(const std::string& name) : name_(name) {}
-
-	void change_name(const std::string& name)
-	{
-		name_ = name;
-		notify();
-	}
-
-	std::string get_name() const
-	{
-		return name_;
-	}
-
-private:
-	std::string name_;
-};
-
-class Human : public Observer<Apple>
-{
-public:
-	Human(){}
-
-	virtual void handle_event(const Apple& apple) override
-	{
-		std::cout << "Apple name changed: " << apple.get_name() << std::endl;
-	}
-};
+#include"Observer.hpp"
+#include"Matrix.hpp"
 
 template<typename T>
 class Row
@@ -41,14 +10,14 @@ class Row
 public:
 	Row(T* data, int size) : data_{data}, size_{size} {}
 
-	int size() const { return size_; }
-	T* data() { return data_; }
+	inline int size() const { return size_; }
+	inline T* data() { return data_; }
 
-	T* begin() { return data_; }
-	T* end() { return (data_ + size_); }
+	inline T* begin() { return data_; }
+	inline T* end() { return (data_ + size_); }
 
-	T const* cbegin() const { return data_; }
-	T const* cend() const { return (data_ + size_); }
+	inline T const* cbegin() const { return data_; }
+	inline T const* cend() const { return (data_ + size_); }
 
 	std::vector<T> to_std_vector()
 	{
@@ -70,7 +39,16 @@ int main(int argc, char* argv[])
 
 	system("chcp 1251");
 
-/* 
+	Matrix<int> mtx(3, 3, 1);
+	int** ptr = mtx.get_data();
+
+	cout << "Mid: " << ptr[0][1] << endl;
+
+	system("pause");
+	return 0;
+}
+
+/*
 	// Example using template Observer
 	Apple appl("€блоко1");
 	Human chel;
@@ -80,19 +58,36 @@ int main(int argc, char* argv[])
 	appl.change_name("новое €блоко");
 */
 
-	Row<int> row(new int[10], 10); // WARNING: leak of memory!
-	int counter{ 0 };
-	for (auto& i : row)
+#if 0
+class Apple : public ObservableObject<Apple>
+{
+public:
+	Apple() {}
+	Apple(const std::string& name) : name_(name) {}
+
+	void change_name(const std::string& name)
 	{
-		i = ++counter;
+		name_ = name;
+		notify();
 	}
 
-	for (auto i : row.to_std_vector())
+	std::string get_name() const
 	{
-		cout << i << " ";
+		return name_;
 	}
-	cout << endl;
 
-	system("pause");
-	return 0;
-}
+private:
+	std::string name_;
+};
+
+class Human : public Observer<Apple>
+{
+public:
+	Human() {}
+
+	virtual void handle_event(const Apple& apple) override
+	{
+		std::cout << "Apple name changed: " << apple.get_name() << std::endl;
+	}
+};
+#endif

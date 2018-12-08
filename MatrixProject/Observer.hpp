@@ -1,7 +1,6 @@
 #pragma once
-
-#include<set>
 #include<algorithm>
+#include<vector>
 
 template<typename T>
 class Observer
@@ -14,34 +13,56 @@ template<typename T>
 class ObservableObject
 {
 public:
-	inline void add_observer(Observer<T>& obs);
-	inline void delete_observer(Observer<T>& obs);
+	virtual ~ObservableObject(){}
+
+	void add_observer(Observer<T>* obs);
+	void delete_observer(Observer<T>* obs);
 
 protected:
-	virtual void notify();
+	void notify();
 
 private:
-	std::set<Observer<T>*> observers;
+	std::vector<Observer<T>*> observers;
 };
 
 template<typename T>
-void ObservableObject<T>::add_observer(Observer<T>& obs)
+void ObservableObject<T>::add_observer(Observer<T>* obs)
 {
-	observers.insert(&obs);
+	if (obs == nullptr)
+	{
+		return;
+	}
+
+	auto beg_ = std::cbegin(observers);
+	auto end_ = std::cend(observers);
+
+	if (std::find(beg_, end_, obs) != end_)
+	{
+		return;
+	}
+
+	observers.push_back(&obs);
 }
 
 template<typename T>
-void ObservableObject<T>::delete_observer(Observer<T>& obs)
+void ObservableObject<T>::delete_observer(Observer<T>* obs)
 {
-	observers.erase(&obs);
+	if (obs == nullptr)
+	{
+		return;
+	}
+
+	auto beg_ = std::cbegin(observers);
+	auto end_ = std::cend(observers);
+
+	observers.erase(std::remove(beg_, end_, &obs), end_);
 }
 
 template<typename T>
 void ObservableObject<T>::notify()
 {
-	std::for_each(std::begin(observers), std::end(observers),
-	[this](auto p)
+	for (auto observer : observers)
 	{
-		p->handle_event(*(dynamic_cast<T*>(this)));
-	});
+		observer->handle_event(*(dynamic_cast<T*>(this)));
+	}
 }
