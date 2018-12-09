@@ -44,6 +44,10 @@ int main(int argc, char* argv[])
 
 	cout << "Mid: " << ptr[0][1] << endl;
 
+	mtx.add_d1(std::vector<int>() = {1,2,4});
+	mtx.add_d2();
+	cout << mtx << endl;
+
 	system("pause");
 	return 0;
 }
