@@ -4,8 +4,8 @@
 
 #include<memory>
 #include<scoped_allocator>
+#include<stdexcept>
 #include<cassert>
-#include"observer.hpp"
 
 namespace my
 {
@@ -43,8 +43,6 @@ namespace my
 		}
 
 		allocator_type get_allocator() { return alloc.inner_allocator(); }
-
-		T** data() { return elem; }
 
 	protected:
 		T** allocate_rows(Index x)
@@ -88,74 +86,8 @@ namespace my
 		matrix_size space;
 	};
 
-	template<typename T>
-	class observer
-	{
-	public:
-		virtual ~observer() {}
-		virtual void handle_event(const T& obj){}
-	};
-
-	template<typename T>
-	class observable_object
-	{
-	public:
-		virtual ~observable_object() {}
-
-		void add_observer(observer<T>* obs);
-		void delete_observer(observer<T>* obs);
-
-	protected:
-		void notify();
-
-	private:
-		std::vector<observer<T>*> observers;
-	};
-
-	template<typename T>
-	void observable_object<T>::add_observer(observer<T>* obs)
-	{
-		if (obs == nullptr)
-		{
-			return;
-		}
-
-		auto beg_ = std::cbegin(observers);
-		auto end_ = std::cend(observers);
-
-		if (std::find(beg_, end_, obs) != end_)
-		{
-			return;
-		}
-
-		observers.push_back(&obs);
-	}
-
-	template<typename T>
-	void observable_object<T>::delete_observer(observer<T>* obs)
-	{
-		if (obs == nullptr)
-		{
-			return;
-		}
-
-		auto beg_ = std::cbegin(observers);
-		auto end_ = std::cend(observers);
-
-		observers.erase(std::remove(beg_, end_, &obs), end_);
-	}
-
-	template<typename T>
-	void observable_object<T>::notify()
-	{
-		for (auto observer_ : observers)
-		{
-			observer_->handle_event(*(dynamic_cast<T*>(this)));
-		}
-	}
-
 	template<class T, class A = std::allocator<T>>
-	class matrix : private MatrixBase<T, A>, private observable_object<matrix<T, A>>
+	class matrix : private MatrixBase<T, A>
 	{
 		using MBase = MatrixBase<T, A>;
 
@@ -176,22 +108,57 @@ namespace my
 			: MBase(x, y, al)
 		{ initialize(val); }
 
+		matrix_size size() const { return this->sz; }
+
+		T** data() { return this->elem; }
+		const T* const* data() const { return this->elem; }
+
 		row at_row(Index x)
 		{
-			//boundary_check(x, this->sz.row);
-			//this->notify();
+			range_check(x, this->sz.row);
 			return row(this->elem[x], x, this->sz.col);
 		}
 
 		const row at_row(Index x) const
 		{
-			//boundary_check(x, this->sz.row);
-			//this->notify();
+			range_check(x, this->sz.row);
 			return row(this->elem[x], x, this->sz.col);
 		}
 
+		row operator[](Index x) { return at_row(x); }
+		const row operator[](Index x) const { return at_row(x); }
+
+		friend std::ostream& operator<<(std::ostream& os, const matrix& mtx)
+		{
+			auto size_mtx = mtx.size();
+			for (Index i = 0; i < size_mtx.row; ++i)
+			{
+				const char* corner_b = "| ";
+				const char* corner_e = "| ";
+
+				if (i == 0)
+				{
+					corner_b = "/ ";
+					corner_e = "\\ ";
+				}
+				else if (i == size_mtx.row - 1)
+				{
+					corner_b = "\\ ";
+					corner_e = "/ ";
+				}
+
+				os << corner_b;
+				for (Index j = 0; j < size_mtx.col; ++j)
+					os << (mtx.at_row(i)).at(j) << " ";
+
+				os << corner_e << std::endl;
+			}			
+			
+			return os;
+		}
+
 	private:
-		void boundary_check(Index x, Index n)
+		void range_check(Index x, Index n) const
 		{
 			if (x < 0 || x >= n)
 				throw std::out_of_range{ "index is out of range of matrix" };
@@ -206,43 +173,75 @@ namespace my
 	};
 
 	template<class T, class A>
-	class matrix<T, A>::row : public observer<typename matrix<T, A>::row>
+	class matrix<T, A>::row
 	{
 		friend class matrix<T, A>;
 	public:
+		Index size() const { return sz; }
+
 		T& at(Index x)
 		{
-			//bound_check(x, sz);
+			range_check(x, sz);
 			return elems[x];
 		}
 
 		const T& at(Index x) const
 		{
-			//bound_check(x, sz);
+			range_check(x, sz);
 			return elems[x];
 		}
 
-		row() {}
-		row(T* p, Index indx, Index n) : elems{ p }, sz { n }, index{ indx } {}
+		T& operator[](Index x) { return at(x); }
+		const T& operator[](Index x) const { return at(x); }
 
-		row(const row& other) = default;
-		row& operator=(const row& other) = default;
+	private:
+		row() = delete;
+		row(T* p, Index indx, Index n) 
+			: elems{ p }, sz { n }, index{ indx } {}
 
-		row(row&& other) = default;
-		row& operator=(row&& other) = default;
+		row(const row& other) = delete;
+		row& operator=(const row& other) = delete;
 
-		virtual void handle_event(const matrix<T, A>& parent)
+		row(row&& other)
 		{
-			//assert(index < 0 || index >= parent.sz.row);
+			if (*this == other)
+				return;
 
-			std::cout << "synch states of a row and of a matrix..." << std::endl;
+			this->elems = other.elems;
+			this->sz = other.sz;
+			this->index = other.index;
+		}
+	public:
+		row& operator=(row&& other)
+		{
+			if (this == &other)
+				return *this;
 
-			//sz = parent.sz.col;
-			//elems = parent.elem[index];
+			if (this->sz != other.sz)
+				throw std::length_error{ "matrix rows should be equal by length" };
+
+			for (Index i = 0; i < sz; ++i)
+				this->elems[i] = other.elems[i];
+		}
+
+		T* data() { return elems; }
+		const T* data() const { return elems; }
+
+	public:
+		friend std::ostream& operator<<(std::ostream& os, const matrix::row& r)
+		{
+			auto size_row = r.size();
+			os << "[ ";
+			for (Index i = 0; i < size_row; ++i)
+				os << r.at(i) << " ";
+
+			os << "]" << std::endl;
+
+			return os;
 		}
 
 	private:
-		void bound_check(Index x, Index n)
+		void range_check(Index x, Index n) const
 		{
 			if (x < 0 || x >= n)
 				throw std::out_of_range{ "index is out of range of matrix::row" };
@@ -252,6 +251,7 @@ namespace my
 		Index index{};
 		Index sz{};
 	};
+
 }
 
 #endif // MATRIX_HPP
