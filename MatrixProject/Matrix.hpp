@@ -6,6 +6,7 @@
 #include<scoped_allocator>
 #include<stdexcept>
 #include<cassert>
+#include<initializer_list>
 
 namespace my
 {
@@ -126,25 +127,11 @@ namespace my
 			auto size_mtx = mtx.size();
 			for (Index i = 0; i < size_mtx.row; ++i)
 			{
-				const char* corner_b = "| ";
-				const char* corner_e = "| ";
-
-				if (i == 0)
-				{
-					corner_b = "/ ";
-					corner_e = "\\ ";
-				}
-				else if (i == size_mtx.row - 1)
-				{
-					corner_b = "\\ ";
-					corner_e = "/ ";
-				}
-
-				os << corner_b;
+				os << "| ";
 				for (Index j = 0; j < size_mtx.col; ++j)
 					os << (mtx.at_row(i)).at(j) << " ";
 
-				os << corner_e << std::endl;
+				os << "|" << std::endl;
 			}			
 			
 			return os;
@@ -192,8 +179,8 @@ namespace my
 		row(T* p, Index indx, Index n) 
 			: elems{ p }, sz { n }, index{ indx } {}
 
-		row(const row& other) = delete;
-		row& operator=(const row& other) = delete;
+		row(const row& other) = default;
+		row& operator=(const row& other) = default;
 
 		row(row&& other)
 		{
@@ -205,7 +192,7 @@ namespace my
 			this->index = other.index;
 		}
 	public:
-		row& operator=(row&& other)
+		row operator=(row&& other)
 		{
 			if (this == &other)
 				return *this;
@@ -213,14 +200,27 @@ namespace my
 			if (this->sz != other.sz)
 				throw std::length_error{ "matrix rows should be equal by length" };
 
-			for (Index i = 0; i < sz; ++i)
-				this->elems[i] = other.elems[i];
+			for (Index i = 0; i < sz; ++i) this->elems[i] = other.elems[i];
+
+			return *this;
+		}
+
+		template<class Container>
+		row operator=(const Container& cont)
+		{
+			this->assign(std::begin(cont), std::end(cont));
+			return *this;
+		}
+
+		row operator=(std::initializer_list<T> lst)
+		{
+			this->assign(std::begin(lst), std::end(lst));
+			return *this;
 		}
 
 		T* data() { return elems; }
 		const T* data() const { return elems; }
 
-	public:
 		friend std::ostream& operator<<(std::ostream& os, const matrix::row& r)
 		{
 			auto size_row = r.size();
@@ -238,6 +238,15 @@ namespace my
 		{
 			if (x < 0 || x >= n)
 				throw std::out_of_range{ "index is out of range of matrix::row" };
+		}
+
+		template<class It>
+		void assign(It first_, It last_)
+		{
+			if(std::distance(first_, last_) != sz)
+				throw std::length_error{ "matrix row should be equal to this range by length" };
+
+			for (Index i = 0; first_ != last_; ++first_, ++i) this->elems[i] = *first_;
 		}
 
 		T* elems{};
