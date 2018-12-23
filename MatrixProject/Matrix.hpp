@@ -26,13 +26,15 @@ namespace my
 		using row_allocator = typename std::allocator_traits<A>::template rebind_alloc<A::pointer>;
 
 		MatrixBase() {}
-		MatrixBase(Index x, Index y) : sz{ x,y } 
-		{ construct(x, y); }
 
 		MatrixBase(const allocator_type& al_) : alloc{ row_allocator(), al_} {}
 		MatrixBase(Index x, Index y, const allocator_type& al_)
 			: sz(x, y), space(x, y), alloc(row_allocator(), al_)
-		{ construct(x, y); }
+		{
+			elem = allocate_rows(x);
+			for (Index i = 0; i < x; ++i)
+				elem[i] = allocate_columns(y);
+		}
 
 		~MatrixBase()
 		{
@@ -71,15 +73,6 @@ namespace my
 			(alloc.inner_allocator()).deallocate(p, y);
 		}
 
-	private:
-		void construct(Index x, Index y)
-		{
-			elem = allocate_rows(x);
-			for (Index i = 0; i < x; ++i)
-				elem[i] = allocate_columns(y);
-		}
-
-	protected:
 		std::scoped_allocator_adaptor<row_allocator, allocator_type> alloc;
 		T** elem{};
 		matrix_size sz;
@@ -99,7 +92,7 @@ namespace my
 		using value_type = T;
 
 		matrix() : MBase() {}
-		matrix(const matrix_size& dim) : MBase(dim.row, dim.col) {}
+		matrix(const matrix_size& dim, const allocator_type& al = allocator_type()) : MBase(dim.row, dim.col, al) {}
 		matrix(const allocator_type& al) : MBase(al) {}
 		matrix(Index x, Index y, const allocator_type& al = allocator_type())
 			: MBase(x, y, al) 
