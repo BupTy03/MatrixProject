@@ -19,9 +19,11 @@ int main(int argc, char** argv)
 	for (int i = 1; i < (mtx.size()).row; ++i)
 		mtx[i] = mtx[i - 1];
 
+	mtx.resize(15, 20, 1);
+
 	cout << mtx << "\n" << endl;
 
-	mtx[5] = std::vector<int>{10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
+	mtx[5] = {10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
 
 	cout << mtx << endl;
 
