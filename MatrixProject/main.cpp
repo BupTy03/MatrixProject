@@ -5,10 +5,21 @@
 #include<memory>
 #include"matrix.hpp"
 
+using namespace std;
+
+void print_matrix(const my::matrix<int>& m)
+{
+	for (const auto& arr : m)
+	{
+		for (const int& i : arr)
+		{
+			cout << i << endl;
+		}
+	}
+}
+
 int main(int argc, char** argv)
 {
-	using namespace std;
-
 	system("chcp 1251");
 
 	my::matrix<int> mtx(10, 10);
@@ -21,12 +32,7 @@ int main(int argc, char** argv)
 
 	mtx.resize(15, 20, 1);
 
-	cout << mtx << "\n" << endl;
-
-	mtx[5] = {10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
-
-	cout << mtx << endl;
-
+	print_matrix(mtx);
 
 	system("pause");
 	return 0;

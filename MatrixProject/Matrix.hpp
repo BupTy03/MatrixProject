@@ -24,8 +24,8 @@ namespace my
 	template<class T, class A>
 	struct MatrixBase
 	{
-		using allocator_type = A;
-		using row_allocator = typename std::allocator_traits<A>::template rebind_alloc<A::pointer>;
+		using allocator_type = typename std::allocator_traits<A>::template rebind_alloc<T>;
+		using row_allocator = typename std::allocator_traits<A>::template rebind_alloc<T*>;
 
 		MatrixBase() {}
 		MatrixBase(const allocator_type& al_) : alloc{ row_allocator(), al_} {}
@@ -60,7 +60,7 @@ namespace my
 	protected:
 		struct RowDeleter
 		{
-			explicit RowDeleter(const A& allocator_, Index size_) : size_{ size_ }, alloc_{ allocator_ }{}
+			explicit RowDeleter(const allocator_type& allocator_, Index size_) : size_{ size_ }, alloc_{ allocator_ }{}
 			void operator()(T* p)
 			{
 				if (p == nullptr) return;
@@ -68,7 +68,7 @@ namespace my
 			}
 		private:
 			Index size_{};
-			A alloc_;
+			allocator_type alloc_;
 		};
 		struct MtxDeleter
 		{
@@ -127,9 +127,14 @@ namespace my
 	public:
 		class Row;
 
+		class MatrixIterator;
+		class ConstMatrixIterator;
+
 		using allocator_type = A;
 		using size_type = matrix_size;
 		using value_type = T;
+		using iterator = MatrixIterator;
+		using const_iterator = ConstMatrixIterator;
 
 		matrix() : MBase() {}
 		matrix(size_type dim, const allocator_type& al = allocator_type()) : MBase(dim, al) {}
@@ -147,15 +152,24 @@ namespace my
 		T** data() { return this->elem; }
 		const T* const* data() const { return this->elem; }
 
+		iterator begin() { return iterator(this->elem, this->sz.col); }
+		iterator end() { return iterator(this->elem + this->sz.row, this->sz.col); }
+
+		const_iterator begin() const { return const_iterator(this->elem, this->sz.col); }
+		const_iterator end() const { return const_iterator(this->elem + this->sz.row, this->sz.col); }
+
+		const_iterator cbegin() const { return const_iterator(this->elem, this->sz.col); }
+		const_iterator cend() const { return const_iterator(this->elem + this->sz.row, this->sz.col); }
+
 		Row row(Index x)
 		{
 			range_check(x, this->sz.row);
-			return Row(this->elem[x], x, this->sz.col);
+			return Row(this->elem[x], this->sz.col);
 		}
 		const Row row(Index x) const
 		{
 			range_check(x, this->sz.row);
-			return Row(this->elem[x], x, this->sz.col);
+			return Row(this->elem[x], this->sz.col);
 		}
 
 		Row operator[](Index x) { return row(x); }
@@ -254,10 +268,80 @@ namespace my
 	};
 
 	template<class T, class A>
+	class matrix<T, A>::MatrixIterator : public std::iterator<std::input_iterator_tag, T>
+	{
+		friend class matrix<T, A>;
+	private:
+		MatrixIterator(T** p, Index num) : p{ p }, row_{ *p, num } {}
+
+	public:
+		MatrixIterator(const MatrixIterator &it) : p{ it.p }, row_{ it.row_ } {}
+		MatrixIterator& operator =(const MatrixIterator&) = default;
+
+		inline bool operator==(MatrixIterator const& other) const { return p == other.p; }
+		inline bool operator!=(MatrixIterator const& other) const { return p != other.p; }
+		inline matrix<T, A>::Row& operator*() { return row_; }
+		inline matrix<T, A>::Row* operator->() noexcept { return &row_; }
+		inline MatrixIterator& operator++()
+		{
+			++p;
+			row_.elems = *p;
+			return *this;
+		}
+		inline MatrixIterator& operator++(int)
+		{
+			auto _tmp = *this;
+			this->operator++();
+			return _tmp;
+		}
+	private:
+		T** p{};
+		matrix<T, A>::Row row_{};
+	};
+
+	template<class T, class A>
+	class matrix<T, A>::ConstMatrixIterator : public std::iterator<std::input_iterator_tag, T>
+	{
+		friend class matrix<T, A>;
+	private:
+		ConstMatrixIterator(T** p, Index num) noexcept : p{ p }, row_{ *p, num } {}
+
+	public:
+		ConstMatrixIterator(const ConstMatrixIterator &it) noexcept : p{ it.p }, row_{ it.row_ } {}
+		ConstMatrixIterator& operator =(const ConstMatrixIterator&) = default;
+
+		inline bool operator==(ConstMatrixIterator const& other) const noexcept { return p == other.p; }
+		inline bool operator!=(ConstMatrixIterator const& other) const noexcept { return p != other.p; }
+		inline const matrix<T, A>::Row& operator*() const noexcept { return row_; }
+		inline const matrix<T, A>::Row* operator->() const noexcept { return &row_; }
+		inline ConstMatrixIterator& operator++() noexcept
+		{
+			++p;
+			row_.elems = *p;
+			return *this;
+		}
+		inline ConstMatrixIterator& operator++(int) noexcept
+		{
+			auto _tmp = *this;
+			this->operator++();
+			return _tmp;
+		}
+	private:
+		T** p{};
+		matrix<T, A>::Row row_{};
+	};
+
+	template<class T, class A>
 	class matrix<T, A>::Row
 	{
 		friend class matrix<T, A>;
 	public:
+		class MatrixRowIterator;
+		class ConstMatrixRowIterator;
+
+		using iterator = MatrixRowIterator;
+		using const_iterator = ConstMatrixRowIterator;
+
 		Index size() const { return sz; }
 
 		T& at(Index x)
@@ -276,12 +360,10 @@ namespace my
 
 	private:
 		Row() = delete;
-		explicit Row(T* p, Index indx, Index n)
-			: elems{ p }, sz { n }, index{ indx } {}
+		explicit Row(T* p, Index n)
+			: elems{ p }, sz { n } {}
 
 		Row(const Row& other) = default;
-		Row& operator=(const Row& other) = default;
-
 		Row(Row&& other)
 		{
 			if (*this == other)
@@ -289,9 +371,10 @@ namespace my
 
 			this->elems = other.elems;
 			this->sz = other.sz;
-			this->index = other.index;
 		}
+
 	public:
+		Row& operator=(const Row& other) = default;
 		Row operator=(Row&& other)
 		{
 			if (this == &other)
@@ -318,6 +401,15 @@ namespace my
 
 		T* data() { return elems; }
 		const T* data() const { return elems; }
+
+		iterator begin() { return iterator(this->elems); }
+		iterator end() { return iterator(this->elems + this->sz); }
+
+		const_iterator begin() const { return const_iterator(this->elems); }
+		const_iterator end() const { return const_iterator(this->elems + this->sz); }
+
+		const_iterator cbegin() const { return const_iterator(this->elems); }
+		const_iterator cend() const { return const_iterator(this->elems + this->sz); }
 
 		friend std::ostream& operator<<(std::ostream& os, const matrix::Row& r)
 		{
@@ -348,10 +440,67 @@ namespace my
 		}
 
 		T* elems{};
-		Index index{};
 		Index sz{};
 	};
 
+	template<class T, class A>
+	class matrix<T, A>::Row::MatrixRowIterator : public std::iterator<std::input_iterator_tag, T>
+	{
+		friend class matrix<T, A>;
+	private:
+		MatrixRowIterator(T* p) noexcept : p{ p } {}
+
+	public:
+		MatrixRowIterator(const MatrixRowIterator& it) noexcept : p{ it.p } {}
+		MatrixRowIterator& operator =(const MatrixRowIterator&) = default;
+
+		inline bool operator==(MatrixRowIterator const& other) const noexcept { return p == other.p; }
+		inline bool operator!=(MatrixRowIterator const& other) const noexcept { return p != other.p; }
+		inline T& operator*() const noexcept { return *p; }
+		inline MatrixRowIterator& operator++() noexcept
+		{
+			++p;
+			return *this;
+		}
+		inline MatrixRowIterator& operator++(int) noexcept
+		{
+			auto _tmp = *this;
+			this->operator++();
+			return _tmp;
+		}
+	private:
+		T* p{};
+	};
+
+	template<class T, class A>
+	class matrix<T, A>::Row::ConstMatrixRowIterator : public std::iterator<std::input_iterator_tag, T>
+	{
+		friend class matrix<T, A>;
+	private:
+		ConstMatrixRowIterator(T* p) noexcept : p{ p } {}
+
+	public:
+		ConstMatrixRowIterator(const ConstMatrixRowIterator &it) noexcept : p{ it.p } {}
+		ConstMatrixRowIterator& operator =(const ConstMatrixRowIterator&) = default;
+
+		inline bool operator==(ConstMatrixRowIterator const& other) const noexcept { return p == other.p; }
+		inline bool operator!=(ConstMatrixRowIterator const& other) const noexcept { return p != other.p; }
+		inline const T& operator*() const noexcept { return *p; }
+		inline const T* operator->() const noexcept { return p; }
+		inline ConstMatrixRowIterator& operator++() noexcept
+		{
+			++p;
+			return *this;
+		}
+		inline ConstMatrixRowIterator& operator++(int) noexcept
+		{
+			auto _tmp = *this;
+			this->operator++();
+			return _tmp;
+		}
+	private:
+		const T* p{};
+	};
 };
 
 #endif // MATRIX_HPP
