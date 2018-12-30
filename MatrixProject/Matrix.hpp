@@ -2,15 +2,26 @@
 #ifndef MATRIX_HPP
 #define MATRIX_HPP
 
+#include<type_traits>
 #include<memory>
 #include<scoped_allocator>
 #include<stdexcept>
-#include<cassert>
 #include<initializer_list>
-#include<functional>
+#include<algorithm>
 
 namespace my
 {
+	template<class InputIt, class ForwardIt>
+	ForwardIt my_uninitialized_move(InputIt first, InputIt last, ForwardIt d_first)
+	{
+		typedef typename std::iterator_traits<ForwardIt>::value_type ValueType;
+		ForwardIt current = d_first;
+		for (; first != last; ++first, (void) ++current) {
+			::new (static_cast<void*>(std::addressof(*current))) ValueType(std::move(*first));
+		}
+		return current;
+	}
+
 	using Index = int;
 
 	struct matrix_size
@@ -90,6 +101,14 @@ namespace my
 				RowDeleter(this->alloc.inner_allocator(), size_r)
 			);
 		}
+		std::unique_ptr<T*[], MtxDeleter> make_matrix(Index count_r)
+		{
+			return std::unique_ptr<T*[], MtxDeleter>(
+				this->alloc.allocate(count_r),
+				MtxDeleter(this->alloc, count_r)
+				);
+		}
+
 		void delete_row(Index r)
 		{
 			if (this->elem[r] == nullptr) return;
@@ -99,14 +118,6 @@ namespace my
 			}
 
 			(this->alloc.inner_allocator()).deallocate(this->elem[r], this->space.col);
-		}
-
-		std::unique_ptr<T*[], MtxDeleter> make_matrix(Index count_r)
-		{
-			return std::unique_ptr<T*[], MtxDeleter>(
-				this->alloc.allocate(count_r),
-				MtxDeleter(this->alloc, count_r)
-			);
 		}
 		void delete_matrix()
 		{
@@ -141,10 +152,11 @@ namespace my
 		matrix(const allocator_type& al) : MBase(al) {}
 		matrix(Index x, Index y, const allocator_type& al = allocator_type())
 			: MBase(al, size_type(x, y))
-		{ initialize(T()); }
+		{ initialize(); }
 		matrix(Index x, Index y, const value_type& val, const allocator_type& al = allocator_type())
 			: MBase(al, size_type(x, y))
 		{ initialize(val); }
+		~matrix() { destruct(); }
 
 		size_type size() const { return this->sz; }
 		size_type capacity() const { return this->space; }
@@ -175,19 +187,50 @@ namespace my
 		Row operator[](Index x) { return row(x); }
 		const Row operator[](Index x) const { return row(x); }
 
+		void swap_rows(Index r1, Index r2)
+		{
+			range_check(r1, this->sz.row);
+			range_check(r2, this->sz.row);
+			std::swap(this->elem[r1], this->elem[r2]);
+		}
+
 		void reserve(size_type newalloc)
 		{
+			if (newalloc.row > this->space.row && this->space.row == 0)
+			{
+				this->elem = this->alloc.allocate(newalloc.row);
+				this->space.row = newalloc.row;
+			}
+
 			if (newalloc.col > this->space.col)
 			{
-				for (Index i = 0; i < this->sz.row; ++i)
+				if (this->space.col == 0)
 				{
-					auto new_row = this->make_row(newalloc.col);
-					std::uninitialized_copy(this->elem[i], &this->elem[i][this->sz.col], new_row.get());
-
-					this->delete_row(i);
-					this->elem[i] = new_row.release();
+					for (Index i = 0; i < this->space.row; ++i)
+						this->elem[i] = (this->alloc.inner_allocator()).allocate(newalloc.col);
 
 					this->space.col = newalloc.col;
+				}
+				else
+				{
+					for (Index i = 0; i < this->sz.row; ++i)
+					{
+						auto new_row = this->make_row(newalloc.col);
+
+						if (std::is_nothrow_move_constructible_v<T>)
+						{
+							my_uninitialized_move(this->elem[i], &(this->elem[i][this->sz.col]), new_row.get());
+						}
+						else
+						{
+							std::uninitialized_copy(this->elem[i], &(this->elem[i][this->sz.col]), new_row.get());
+						}
+
+						this->delete_row(i);
+						this->elem[i] = new_row.release();
+
+						this->space.col = newalloc.col;
+					}
 				}
 			}
 
@@ -195,7 +238,8 @@ namespace my
 			{
 				auto new_mtx = this->make_matrix(newalloc.row);
 
-				std::uninitialized_copy(this->elem, &this->elem[this->sz.row], new_mtx.get());
+				std::copy(this->elem, &(this->elem[this->sz.row]), new_mtx.get());
+
 				for (Index i = this->sz.row; i < newalloc.row; ++i)
 				{
 					new_mtx[i] = (this->alloc.inner_allocator()).allocate(this->space.col);
@@ -212,14 +256,14 @@ namespace my
 			reserve(size_type(newalloc_row, newalloc_col));
 		}
 
-		void resize(size_type newsize, const T& val = T())
+		void resize(size_type newsize)
 		{
 			reserve(newsize);
 			if (newsize.col > this->sz.col)
 			{
 				for (Index i = 0; i < this->sz.row; ++i)
 					for (Index j = this->sz.col; j < newsize.col; ++j)
-						this->elem[i][j] = val;
+						(this->alloc.inner_allocator()).construct(&(this->elem[i][j]));
 
 				this->sz.col = newsize.col;
 			}
@@ -228,14 +272,14 @@ namespace my
 			{
 				for (Index i = this->sz.row; i < newsize.row; ++i)
 					for (Index j = 0; j < this->sz.col; ++j)
-						this->elem[i][j] = val;
+						(this->alloc.inner_allocator()).construct(&(this->elem[i][j]));
 
 				this->sz.row = newsize.row;
 			}
 		}
-		void resize(Index newsize_row, Index newsize_col, const T& val = T())
+		void resize(Index newsize_row, Index newsize_col)
 		{
-			resize(size_type(newsize_row, newsize_col), val);
+			resize(size_type(newsize_row, newsize_col));
 		}
 
 		friend std::ostream& operator<<(std::ostream& os, const matrix& mtx)
@@ -259,11 +303,27 @@ namespace my
 			if (x < 0 || x >= n)
 				throw std::out_of_range{ "index is out of range of matrix" };
 		}
+		void initialize()
+		{
+			for (Index i = 0; i < this->sz.row; ++i)
+				for (Index j = 0; j < this->sz.col; ++j)
+					this->alloc.construct(&(this->elem[i][j]));
+		}
 		void initialize(const T& val)
 		{
 			for (Index i = 0; i < this->sz.row; ++i)
 				for (Index j = 0; j < this->sz.col; ++j)
 					this->alloc.construct(&(this->elem[i][j]), val);
+		}
+		void destruct()
+		{
+			for (Index i = 0; i < this->sz.row; ++i)
+			{
+				for (Index j = 0; j < this->sz.col; ++j)
+				{
+					(this->alloc.inner_allocator()).destroy(&(this->elem[i][j]));
+				}
+			}
 		}
 	};
 

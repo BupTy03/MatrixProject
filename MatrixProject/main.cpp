@@ -4,35 +4,29 @@
 #include<algorithm>
 #include<memory>
 #include"matrix.hpp"
+#include"TestObject.hpp"
+#include"SimpleTimer.hpp"
 
 using namespace std;
-
-void print_matrix(const my::matrix<int>& m)
-{
-	for (const auto& arr : m)
-	{
-		for (const int& i : arr)
-		{
-			cout << i << endl;
-		}
-	}
-}
 
 int main(int argc, char** argv)
 {
 	system("chcp 1251");
+	system("cls");
 
-	my::matrix<int> mtx(10, 10);
+	my::SimpleTimer<std::chrono::milliseconds> timer;
 
-	for (int i = 0; i < (mtx.size()).col; ++i)
-		mtx[0][i] = i + 1;
+	try {
+		timer.start();
 
-	for (int i = 1; i < (mtx.size()).row; ++i)
-		mtx[i] = mtx[i - 1];
+		my::matrix<my::TestObject> mtx_obj(3, 4);
 
-	mtx.resize(15, 20, 1);
-
-	print_matrix(mtx);
+		timer.stop();
+		timer.log_curr_time();
+	}
+	catch (const std::exception& exc) {
+		cout << exc.what() << endl;
+	}
 
 	system("pause");
 	return 0;

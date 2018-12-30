@@ -23,6 +23,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="matrix.hpp" />
+    <ClInclude Include="SimpleTimer.hpp" />
+    <ClInclude Include="TestObject.hpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
