@@ -13,26 +13,26 @@ namespace my
 	public:
 		TestObject() : id{ ++counter }
 		{
-			//std::cout << "[object " << id << "] " << "TestObject::TestObject() (default constructor)" << std::endl;
-			//status = "constructed with default constructor";
-			//history.push_back(status);
+			std::cout << "[object " << id << "] " << "TestObject::TestObject() (default constructor)" << std::endl;
+			status = "constructed with default constructor";
+			history.push_back(status);
 		}
 
 		TestObject(const TestObject& other)
 			: id{ ++counter }, parent_id{ other.id }
 		{
-			/*std::cout << "[object " << id << "] " << "TestObject::TestObject(const TestObject& other) (copy constructor)" << std::endl;
+			std::cout << "[object " << id << "] " << "TestObject::TestObject(const TestObject& other) (copy constructor)" << std::endl;
 			status = "constructed with copy constructor from object with id: ";
 			status += std::to_string(other.id);
-			history.push_back(status);*/
+			history.push_back(status);
 		}
 		TestObject& operator=(const TestObject& other)
 		{
 			if (this == &other) return *this;
-			/*std::cout << "[object " << id << "] " << "TestObject& TestObject::operator=(const TestObject& other) (copy assignment operator)" << std::endl;
+			std::cout << "[object " << id << "] " << "TestObject& TestObject::operator=(const TestObject& other) (copy assignment operator)" << std::endl;
 			status = "parameters of this object is assigned with parameters of object with id: ";
 			status += std::to_string(other.id);
-			history.push_back(status);*/
+			history.push_back(status);
 			return *this;
 		}
 
@@ -61,9 +61,9 @@ namespace my
 
 		virtual ~TestObject()
 		{
-			//std::cout << "[object " << id << "] " << "virtual TestObject::~TestObject() (destructor)" << std::endl;
-			//status = "this object is destructed";
-			//history.push_back(status);
+			std::cout << "[object " << id << "] " << "virtual TestObject::~TestObject() (destructor)" << std::endl;
+			status = "this object is destructed";
+			history.push_back(status);
 		}
 
 		std::vector<std::string> getHistory() const { return history; }
