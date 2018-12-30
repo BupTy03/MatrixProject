@@ -43,7 +43,7 @@ namespace my
 			)
 		{}
 
-		SimpleTimer(std::ostream& os, bool lwd = false, bool stpd = false,
+		explicit SimpleTimer(std::ostream& os, bool lwd = false, bool stpd = false,
 			const char* pref = "Elapsed time: ",
 			const char* pstf =
 			(std::is_same<T, std::chrono::hours>::value) ? " hours." :

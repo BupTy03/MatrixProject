@@ -39,9 +39,9 @@ namespace my
 		using row_allocator = typename std::allocator_traits<A>::template rebind_alloc<T*>;
 
 		MatrixBase() {}
-		MatrixBase(const allocator_type& al_) : alloc{ row_allocator(), al_} {}
+		explicit MatrixBase(const allocator_type& al_) : alloc{ row_allocator(), al_} {}
 
-		MatrixBase(const allocator_type& al_, matrix_size size_mtx)
+		explicit MatrixBase(const allocator_type& al_, matrix_size size_mtx)
 			: alloc{ row_allocator(), al_ }, sz{ size_mtx }, space{ size_mtx }
 		{
 			if (size_mtx.row < 0 || size_mtx.col < 0)
@@ -148,12 +148,12 @@ namespace my
 		using const_iterator = ConstMatrixIterator;
 
 		matrix() : MBase() {}
-		matrix(size_type dim, const allocator_type& al = allocator_type()) : MBase(dim, al) {}
-		matrix(const allocator_type& al) : MBase(al) {}
-		matrix(Index x, Index y, const allocator_type& al = allocator_type())
+		explicit matrix(size_type dim, const allocator_type& al = allocator_type()) : MBase(dim, al) {}
+		explicit matrix(const allocator_type& al) : MBase(al) {}
+		explicit matrix(Index x, Index y, const allocator_type& al = allocator_type())
 			: MBase(al, size_type(x, y))
 		{ initialize(); }
-		matrix(Index x, Index y, const value_type& val, const allocator_type& al = allocator_type())
+		explicit matrix(Index x, Index y, const value_type& val, const allocator_type& al = allocator_type())
 			: MBase(al, size_type(x, y))
 		{ initialize(val); }
 		~matrix() { destruct(); }
