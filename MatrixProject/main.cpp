@@ -15,11 +15,13 @@ int main(int argc, char** argv)
 		timer.start();
 		
 		my::matrix<int> mtx(3, 4);
-		mtx[0] = { 1,2,3,4 };
+		mtx[0] = { 1, 2, 3, 4 };
 
 		std::cout << mtx << std::endl;
 
-		my::matrix<int> mtx2 = std::move(mtx);
+		my::matrix<int> mtx2;
+		mtx2 = mtx;
+		mtx2[1] = { 5, 6, 7, 8 };
 
 		std::cout << mtx2 << std::endl;
 		std::cout << mtx << std::endl;

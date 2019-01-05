@@ -183,6 +183,8 @@ namespace my
 		}
 		matrix& operator=(const matrix& other)
 		{
+			if (this == &other) return *this;
+
 			for (Index i = 0; i < this->sz.row; ++i)
 				for(Index j = 0; j < this->sz.col; ++j)
 					(this->alloc.inner_allocator()).destroy(&(this->elem[i][j]));
@@ -194,6 +196,8 @@ namespace my
 				std::uninitialized_copy(other.elem[i], other.elem[i] + other.sz.col, this->elem[i]);
 
 			this->sz = other.sz;
+
+			return *this;
 		}
 		matrix(matrix&& other) { this->swap(other); }
 		matrix& operator=(matrix&& other)
