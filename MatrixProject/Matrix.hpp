@@ -55,18 +55,17 @@ namespace my
 				elem[i] = (alloc.inner_allocator()).allocate(size_mtx.col);
 		}
 
-		~MatrixBase()
-		{
-			if (space.col > 0)
-			{
-				for (Index i = 0; i < space.row; ++i)
-					(alloc.inner_allocator()).deallocate(elem[i], space.col);
-			}
-			
-			alloc.deallocate(elem, space.row);
-		}
+		~MatrixBase() { destruct(); }
 
 		allocator_type get_allocator() { return alloc.inner_allocator(); }
+
+		void swap(MatrixBase& right)
+		{
+			std::swap(alloc, right.alloc);
+			std::swap(elem, right.elem);
+			std::swap(sz, right.sz);
+			std::swap(space, right.space);
+		}
 
 	protected:
 		struct RowDeleter
@@ -124,6 +123,26 @@ namespace my
 			this->alloc.deallocate(this->elem, this->space.row);
 		}
 
+		void destruct()
+		{
+			if (space.col > 0)
+			{
+				for (Index i = 0; i < this->sz.row; ++i)
+				{
+					for (Index j = 0; j < this->sz.col; ++j)
+					{
+						(this->alloc.inner_allocator()).destroy(&(this->elem[i][j]));
+					}
+					(alloc.inner_allocator()).deallocate(elem[i], space.col);
+				}
+
+				for (Index i = this->sz.row; i < space.row; ++i)
+					(alloc.inner_allocator()).deallocate(elem[i], space.col);
+			}
+
+			alloc.deallocate(elem, space.row);
+		}
+
 		std::scoped_allocator_adaptor<row_allocator, allocator_type> alloc;
 		T** elem{};
 		matrix_size sz;
@@ -156,7 +175,39 @@ namespace my
 		explicit matrix(Index x, Index y, const value_type& val, const allocator_type& al = allocator_type())
 			: MBase(al, size_type(x, y))
 		{ initialize(val); }
-		~matrix() { destruct(); }
+
+		matrix(const matrix& other) : MBase(other.alloc, other.sz)
+		{
+			for (Index i = 0; i < other.sz.row; ++i)
+				std::uninitialized_copy(other.elem[i], other.elem[i] + other.sz.col, this->elem[i]);
+		}
+		matrix& operator=(const matrix& other)
+		{
+			for (Index i = 0; i < this->sz.row; ++i)
+				for(Index j = 0; j < this->sz.col; ++j)
+					(this->alloc.inner_allocator()).destroy(&(this->elem[i][j]));
+
+			if (this->space.row < other.sz.row || this->space.col >= other.sz.col)
+				reserve(other.sz);
+
+			for (Index i = 0; i < other.sz.row; ++i)
+				std::uninitialized_copy(other.elem[i], other.elem[i] + other.sz.col, this->elem[i]);
+
+			this->sz = other.sz;
+		}
+		matrix(matrix&& other) { this->swap(other); }
+		matrix& operator=(matrix&& other)
+		{
+			if (this == &other) return *this;
+
+			this->swap(other);
+
+			MBase tmp;
+			tmp.swap(other);
+			return *this;
+		}
+
+		~matrix() {}
 
 		size_type size() const { return this->sz; }
 		size_type capacity() const { return this->space; }
@@ -218,13 +269,9 @@ namespace my
 						auto new_row = this->make_row(newalloc.col);
 
 						if (std::is_nothrow_move_constructible_v<T>)
-						{
 							my_uninitialized_move(this->elem[i], &(this->elem[i][this->sz.col]), new_row.get());
-						}
 						else
-						{
 							std::uninitialized_copy(this->elem[i], &(this->elem[i][this->sz.col]), new_row.get());
-						}
 
 						this->delete_row(i);
 						this->elem[i] = new_row.release();
@@ -282,6 +329,23 @@ namespace my
 			resize(size_type(newsize_row, newsize_col));
 		}
 
+		template<class It>
+		void add_row(It first, It last)
+		{
+			auto dist_ = std::distance(first, last);
+			if (dist_ != this->sz.col)
+				throw std::out_of_range{ "columns count is not equal to new row" };
+
+			reserve(size_type(this->sz.row + 1, this->sz.col));
+
+			for (Index i = 0; i < dist_; ++i, ++first)
+				(this->alloc.inner_allocator()).construct(&(this->elem[this->sz.row][i]), *first);
+
+			this->sz.row += 1;
+		}
+		template<class Container>
+		void add_row(const Container& cont) { add_row(std::cbegin(cont), std::cend(cont)); }
+
 		friend std::ostream& operator<<(std::ostream& os, const matrix& mtx)
 		{
 			auto size_mtx = mtx.size();
@@ -314,16 +378,6 @@ namespace my
 			for (Index i = 0; i < this->sz.row; ++i)
 				for (Index j = 0; j < this->sz.col; ++j)
 					this->alloc.construct(&(this->elem[i][j]), val);
-		}
-		void destruct()
-		{
-			for (Index i = 0; i < this->sz.row; ++i)
-			{
-				for (Index j = 0; j < this->sz.col; ++j)
-				{
-					(this->alloc.inner_allocator()).destroy(&(this->elem[i][j]));
-				}
-			}
 		}
 	};
 
