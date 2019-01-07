@@ -375,13 +375,13 @@ namespace my
 		{
 			for (Index i = 0; i < this->sz.row; ++i)
 				for (Index j = 0; j < this->sz.col; ++j)
-					this->alloc.construct(&(this->elem[i][j]));
+					(this->alloc.inner_allocator()).construct(&(this->elem[i][j]));
 		}
 		void initialize(const T& val)
 		{
 			for (Index i = 0; i < this->sz.row; ++i)
 				for (Index j = 0; j < this->sz.col; ++j)
-					this->alloc.construct(&(this->elem[i][j]), val);
+					(this->alloc.inner_allocator()).construct(&(this->elem[i][j]), val);
 		}
 	};
 
