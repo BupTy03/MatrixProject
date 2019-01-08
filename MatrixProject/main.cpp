@@ -3,6 +3,7 @@
 #include<array>
 #include"matrix.hpp"
 #include"SimpleTimer.hpp"
+#include"TestObject.hpp"
 
 int main(int argc, char** argv)
 {
@@ -13,25 +14,21 @@ int main(int argc, char** argv)
 
 	try {
 		timer.start();
-		
-		my::matrix<int> mtx(3, 4);
-		mtx[0] = { 1, 2, 3, 4 };
 
-		std::cout << mtx << std::endl;
+		my::matrix<my::TestObject> mtx(3, 4, my::TestObject());
 
-		my::matrix<int> mtx2;
-		mtx2 = mtx;
-		mtx2[1] = { 5, 6, 7, 8 };
-
-		std::cout << mtx2 << std::endl;
 		std::cout << mtx << std::endl;
 
 		timer.stop();
 		timer.log_curr_time();
 	}
 	catch (const std::exception& exc) {
-		std::cout << exc.what() << std::endl;
+		std::cout << "Exception is caught: " <<  exc.what() << std::endl;
 	}
+	catch (...) {
+		std::cout << "Something is going wrong\n";
+	}
+
 
 	system("pause");
 	return 0;

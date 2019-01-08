@@ -25,6 +25,11 @@ namespace my
 			status = "constructed with copy constructor from object with id: ";
 			status += std::to_string(other.id);
 			history.push_back(status);
+
+			// ----------- Exception testing ------
+			if (id > 5)
+				throw std::exception{ "TEST" };
+			// ------------------------------------
 		}
 		TestObject& operator=(const TestObject& other)
 		{
@@ -65,6 +70,19 @@ namespace my
 			status = "this object is destructed";
 			history.push_back(status);
 		}
+
+		friend std::ostream& operator<<(std::ostream& os, const TestObject& obj)
+		{
+			os << "TestObject{id: " << obj.id << "}";
+			return os;
+		}
+
+		bool operator==(const TestObject& other) const { return id == other.id; }
+		bool operator!=(const TestObject& other) const { return id != other.id; }
+		bool operator<(const TestObject& other) const { return id < other.id; }
+		bool operator>(const TestObject& other) const { return id > other.id; }
+		bool operator<=(const TestObject& other) const { return id <= other.id; }
+		bool operator>=(const TestObject& other) const { return id >= other.id; }
 
 		std::vector<std::string> getHistory() const { return history; }
 		std::string getStatus() const { return status; }

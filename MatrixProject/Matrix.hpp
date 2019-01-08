@@ -55,7 +55,16 @@ namespace my
 				elem[i] = (alloc.inner_allocator()).allocate(size_mtx.col);
 		}
 
-		~MatrixBase() { destruct(); }
+		~MatrixBase() 
+		{
+			if (space.col > 0)
+			{
+				for (Index i = 0; i < space.row; ++i)
+					(alloc.inner_allocator()).deallocate(elem[i], space.col);
+			}
+
+			alloc.deallocate(elem, space.row);
+		}
 
 		allocator_type get_allocator() { return alloc.inner_allocator(); }
 
@@ -123,26 +132,6 @@ namespace my
 			this->alloc.deallocate(this->elem, this->space.row);
 		}
 
-		void destruct()
-		{
-			if (space.col > 0)
-			{
-				for (Index i = 0; i < this->sz.row; ++i)
-				{
-					for (Index j = 0; j < this->sz.col; ++j)
-					{
-						(this->alloc.inner_allocator()).destroy(&(this->elem[i][j]));
-					}
-					(alloc.inner_allocator()).deallocate(elem[i], space.col);
-				}
-
-				for (Index i = this->sz.row; i < space.row; ++i)
-					(alloc.inner_allocator()).deallocate(elem[i], space.col);
-			}
-
-			alloc.deallocate(elem, space.row);
-		}
-
 		std::scoped_allocator_adaptor<row_allocator, allocator_type> alloc;
 		T** elem{};
 		matrix_size sz;
@@ -167,7 +156,8 @@ namespace my
 		using const_iterator = ConstMatrixIterator;
 
 		matrix() : MBase() {}
-		explicit matrix(size_type dim, const allocator_type& al = allocator_type()) : MBase(dim, al) {}
+		explicit matrix(size_type dim, const allocator_type& al = allocator_type()) : MBase(al, dim)
+		{ initialize(); }
 		explicit matrix(const allocator_type& al) : MBase(al) {}
 		explicit matrix(Index x, Index y, const allocator_type& al = allocator_type())
 			: MBase(al, size_type(x, y))
@@ -211,7 +201,12 @@ namespace my
 			return *this;
 		}
 
-		~matrix() {}
+		~matrix() 
+		{
+			for (Index i = 0; i < this->sz.row; ++i)
+				for (Index j = 0; j < this->sz.col; ++j)
+					(this->alloc.inner_allocator()).destroy(&(this->elem[i][j]));
+		}
 
 		size_type size() const { return this->sz; }
 		size_type capacity() const { return this->space; }
@@ -373,15 +368,75 @@ namespace my
 		}
 		void initialize()
 		{
-			for (Index i = 0; i < this->sz.row; ++i)
-				for (Index j = 0; j < this->sz.col; ++j)
-					(this->alloc.inner_allocator()).construct(&(this->elem[i][j]));
+			Index i = 0;
+			Index j = 0;
+			try {
+				for (; i < this->sz.row; ++i)
+					for (j = 0; j < this->sz.col; ++j)
+						(this->alloc.inner_allocator()).construct(&(this->elem[i][j]));
+			}
+			catch (const std::exception& exc) {
+				for (Index m = 0; m <= i; ++m)
+				{
+					Index k = (m == i) ? j : this->sz.col - 1;
+					for (Index n = 0; n <= k; ++n)
+						(this->alloc.inner_allocator()).destroy(&(this->elem[m][n]));
+				}
+
+				this->sz.row = 0;
+				this->sz.col = 0;
+
+				throw exc;
+			}
+			catch (...) {
+				for (Index m = 0; m <= i; ++m)
+				{
+					Index k = (m == i) ? j : this->sz.col - 1;
+					for (Index n = 0; n <= k; ++n)
+						(this->alloc.inner_allocator()).destroy(&(this->elem[m][n]));
+				}
+
+				this->sz.row = 0;
+				this->sz.col = 0;
+
+				throw;
+			}
 		}
 		void initialize(const T& val)
 		{
-			for (Index i = 0; i < this->sz.row; ++i)
-				for (Index j = 0; j < this->sz.col; ++j)
-					(this->alloc.inner_allocator()).construct(&(this->elem[i][j]), val);
+			Index i = 0;
+			Index j = 0;
+			try {
+				for (; i < this->sz.row; ++i)
+					for (j = 0; j < this->sz.col; ++j)
+						(this->alloc.inner_allocator()).construct(&(this->elem[i][j]), val);
+			}
+			catch (const std::exception& exc) {
+				for (Index m = 0; m <= i; ++m)
+				{
+					Index k = (m == i) ? j : this->sz.col - 1;
+					for (Index n = 0; n <= k; ++n)
+						(this->alloc.inner_allocator()).destroy(&(this->elem[m][n]));
+				}
+
+				this->sz.row = 0;
+				this->sz.col = 0;
+
+				throw exc;
+			}
+			catch (...) {
+				for (Index m = 0; m <= i; ++m)
+				{
+					Index k = (m == i) ? j : this->sz.col - 1;
+					for (Index n = 0; n <= k; ++n)
+						(this->alloc.inner_allocator()).destroy(&(this->elem[m][n]));
+				}
+
+				this->sz.row = 0;
+				this->sz.col = 0;
+
+				throw;
+			}
 		}
 	};
 
