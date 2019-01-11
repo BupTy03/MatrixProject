@@ -25,7 +25,17 @@ int main(int argc, char** argv)
 		mtx.add_row(arr);
 		mtx.add_row(arr);
 
+		mtx.row(2) = { -1, -1, -1, -1 };
+
 		std::cout << mtx << std::endl;
+
+		for (auto rit = mtx.rcbegin(); rit != mtx.rcend(); ++rit)
+		{
+			for (auto it = rit.base()->begin(); it != rit.base()->end(); ++it)
+			{
+				std::cout << *it << std::endl;
+			}
+		}
 
 		mtx.swap_cols(0, 3);
 
@@ -48,7 +58,6 @@ int main(int argc, char** argv)
 	catch (...) {
 		std::cout << "Something is going wrong\n";
 	}
-
 
 	system("pause");
 	return 0;

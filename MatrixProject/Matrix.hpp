@@ -8,6 +8,7 @@
 #include<stdexcept>
 #include<initializer_list>
 #include<algorithm>
+#include<iterator>
 
 namespace my
 {
@@ -225,6 +226,15 @@ namespace my
 
 		const_iterator cbegin() const { return const_iterator(this->elem, this->sz.col); }
 		const_iterator cend() const { return const_iterator(this->elem + this->sz.row, this->sz.col); }
+
+		std::reverse_iterator<iterator> rbegin() { return std::reverse_iterator<iterator>(iterator(this->elem + this->sz.row - 1, this->sz.col)); }
+		std::reverse_iterator<iterator> rend() { return std::reverse_iterator<iterator>(iterator(this->elem - 1, this->sz.col)); }
+
+		std::reverse_iterator<const_iterator> rbegin() const { return std::reverse_iterator<const_iterator>(const_iterator(this->elem + this->sz.row - 1, this->sz.col)); }
+		std::reverse_iterator<const_iterator> rend() const { return std::reverse_iterator<const_iterator>(const_iterator(this->elem - 1, this->sz.col)); }
+
+		std::reverse_iterator<const_iterator> rcbegin() const { return std::reverse_iterator<const_iterator>(const_iterator(this->elem + this->sz.row - 1, this->sz.col)); }
+		std::reverse_iterator<const_iterator> rcend() const { return std::reverse_iterator<const_iterator>(const_iterator(this->elem - 1, this->sz.col)); }
 
 		Row row(Index x)
 		{
@@ -499,13 +509,25 @@ namespace my
 			this->operator++();
 			return _tmp;
 		}
+		inline MatrixIterator& operator--()
+		{
+			--p;
+			row_.elems = *p;
+			return *this;
+		}
+		inline MatrixIterator& operator--(int)
+		{
+			auto _tmp = *this;
+			this->operator--();
+			return _tmp;
+		}
 	private:
 		T** p{};
 		matrix<T, A>::Row row_{};
 	};
 
 	template<class T, class A>
-	class matrix<T, A>::ConstMatrixIterator : public std::iterator<std::input_iterator_tag, T>
+	class matrix<T, A>::ConstMatrixIterator : public std::iterator<std::input_iterator_tag, T, ptrdiff_t, T*, const T&>
 	{
 		friend class matrix<T, A>;
 	private:
@@ -529,6 +551,18 @@ namespace my
 		{
 			auto _tmp = *this;
 			this->operator++();
+			return _tmp;
+		}
+		inline ConstMatrixIterator& operator--()
+		{
+			--p;
+			row_.elems = *p;
+			return *this;
+		}
+		inline ConstMatrixIterator& operator--(int)
+		{
+			auto _tmp = *this;
+			this->operator--();
 			return _tmp;
 		}
 	private:
@@ -607,6 +641,15 @@ namespace my
 		T* data() { return elems; }
 		const T* data() const { return elems; }
 
+		template<class It>
+		void assign(It first_, It last_)
+		{
+			if (std::distance(first_, last_) != sz)
+				throw std::length_error{ "matrix row should be equal to this range by length" };
+
+			for (Index i = 0; first_ != last_; ++first_, ++i) this->elems[i] = *first_;
+		}
+
 		iterator begin() { return iterator(this->elems); }
 		iterator end() { return iterator(this->elems + this->sz); }
 
@@ -615,6 +658,15 @@ namespace my
 
 		const_iterator cbegin() const { return const_iterator(this->elems); }
 		const_iterator cend() const { return const_iterator(this->elems + this->sz); }
+
+		std::reverse_iterator<iterator> rbegin() { return std::reverse_iterator<iterator>(iterator(this->elems + this->sz)); }
+		std::reverse_iterator<iterator> rend() { return std::reverse_iterator<iterator>(iterator(this->elems)); }
+
+		std::reverse_iterator<const_iterator> rbegin() const { return std::reverse_iterator<const_iterator>(const_iterator(this->elems + this->sz)); }
+		std::reverse_iterator<const_iterator> rend() const { return std::reverse_iterator<const_iterator>(const_iterator(this->elems)); }
+
+		std::reverse_iterator<const_iterator> rcbegin() const { return std::reverse_iterator<const_iterator>(const_iterator(this->elems + this->sz)); }
+		std::reverse_iterator<const_iterator> rcend() const { return std::reverse_iterator<const_iterator>(const_iterator(this->elems)); }
 
 		friend std::ostream& operator<<(std::ostream& os, const matrix::Row& r)
 		{
@@ -633,15 +685,6 @@ namespace my
 		{
 			if (x < 0 || x >= n)
 				throw std::out_of_range{ "index is out of range of matrix::row" };
-		}
-
-		template<class It>
-		void assign(It first_, It last_)
-		{
-			if(std::distance(first_, last_) != sz)
-				throw std::length_error{ "matrix row should be equal to this range by length" };
-
-			for (Index i = 0; first_ != last_; ++first_, ++i) this->elems[i] = *first_;
 		}
 
 		T* elems{};
@@ -673,12 +716,23 @@ namespace my
 			this->operator++();
 			return _tmp;
 		}
+		inline MatrixRowIterator& operator--() noexcept
+		{
+			--p;
+			return *this;
+		}
+		inline MatrixRowIterator& operator--(int) noexcept
+		{
+			auto _tmp = *this;
+			this->operator--();
+			return _tmp;
+		}
 	private:
 		T* p{};
 	};
 
 	template<class T, class A>
-	class matrix<T, A>::Row::ConstMatrixRowIterator : public std::iterator<std::input_iterator_tag, T>
+	class matrix<T, A>::Row::ConstMatrixRowIterator : public std::iterator<std::input_iterator_tag, T, ptrdiff_t, T*, const T&>
 	{
 		friend class matrix<T, A>;
 	private:
@@ -701,6 +755,17 @@ namespace my
 		{
 			auto _tmp = *this;
 			this->operator++();
+			return _tmp;
+		}
+		inline ConstMatrixRowIterator& operator--() noexcept
+		{
+			--p;
+			return *this;
+		}
+		inline ConstMatrixRowIterator& operator--(int) noexcept
+		{
+			auto _tmp = *this;
+			this->operator--();
 			return _tmp;
 		}
 	private:
