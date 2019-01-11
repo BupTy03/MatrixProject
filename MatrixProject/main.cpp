@@ -1,4 +1,5 @@
 #include<iostream>
+#include<numeric>
 #include<vector>
 #include<array>
 #include"matrix.hpp"
@@ -15,9 +16,28 @@ int main(int argc, char** argv)
 	try {
 		timer.start();
 
-		my::matrix<my::TestObject> mtx(3, 4, my::TestObject());
+		my::matrix<int> mtx(0, 4);
+
+		int arr[4];
+		std::iota(std::begin(arr), std::end(arr), 0);
+
+		mtx.add_row(arr);
+		mtx.add_row(arr);
+		mtx.add_row(arr);
 
 		std::cout << mtx << std::endl;
+
+		mtx.swap_cols(0, 3);
+
+		std::cout << mtx << std::endl;
+
+		my::matrix<int> nullmtx(mtx.size(), 0);
+
+		std::cout << nullmtx << std::endl;
+
+		nullmtx.swap(mtx);
+
+		std::cout << nullmtx << std::endl;
 
 		timer.stop();
 		timer.log_curr_time();

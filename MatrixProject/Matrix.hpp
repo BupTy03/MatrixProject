@@ -165,6 +165,9 @@ namespace my
 		explicit matrix(Index x, Index y, const value_type& val, const allocator_type& al = allocator_type())
 			: MBase(al, size_type(x, y))
 		{ initialize(val); }
+		explicit matrix(size_type sz, const value_type& val, const allocator_type& al = allocator_type())
+			: MBase(al, sz)
+		{ initialize(val); }
 
 		matrix(const matrix& other) : MBase(other.alloc, other.sz)
 		{
@@ -237,19 +240,50 @@ namespace my
 		Row operator[](Index x) { return row(x); }
 		const Row operator[](Index x) const { return row(x); }
 
+		T& at(Index x, Index y) 
+		{
+			range_check(x, this->sz.row);
+			range_check(y, this->sz.col);
+			return this->elem[x][y]; 
+		}
+		const T& at(Index x, Index y) const 
+		{
+			range_check(x, this->sz.row);
+			range_check(y, this->sz.col);
+			return this->elem[x][y]; 
+		}
+
+		void swap(matrix& other) { dynamic_cast<MBase*>(this)->swap(dynamic_cast<MBase&>(other)); }
+
 		void swap_rows(Index r1, Index r2)
 		{
 			range_check(r1, this->sz.row);
 			range_check(r2, this->sz.row);
 			std::swap(this->elem[r1], this->elem[r2]);
 		}
+		void swap_cols(Index c1, Index c2)
+		{
+			range_check(c1, this->sz.col);
+			range_check(c2, this->sz.col);
+			for (Index i = 0; i < this->sz.row; ++i)
+				std::swap(this->elem[i][c1], this->elem[i][c2]);
+		}
 
 		void reserve(size_type newalloc)
 		{
-			if (newalloc.row > this->space.row && this->space.row == 0)
+			if (newalloc.row > this->space.row && newalloc.row == 0)
 			{
 				this->elem = this->alloc.allocate(newalloc.row);
 				this->space.row = newalloc.row;
+
+				Index new_all_col = std::max(newalloc.col, this->space.col);
+				if (new_all_col > 0)
+				{
+					for (Index i = 0; i < this->space.row; ++i)
+						(this->alloc.inner_allocator()).allocate(new_all_col);
+				}
+
+				return;
 			}
 
 			if (newalloc.col > this->space.col)
@@ -287,9 +321,7 @@ namespace my
 				std::copy(this->elem, &(this->elem[this->sz.row]), new_mtx.get());
 
 				for (Index i = this->sz.row; i < newalloc.row; ++i)
-				{
 					new_mtx[i] = (this->alloc.inner_allocator()).allocate(this->space.col);
-				}
 
 				this->delete_matrix();
 				this->elem = new_mtx.release();
@@ -674,6 +706,6 @@ namespace my
 	private:
 		const T* p{};
 	};
-};
+}
 
 #endif // MATRIX_HPP
