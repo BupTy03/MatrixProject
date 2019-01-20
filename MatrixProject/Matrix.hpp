@@ -9,6 +9,7 @@
 #include<initializer_list>
 #include<algorithm>
 #include<iterator>
+#include<vector>
 
 namespace my
 {
@@ -648,6 +649,13 @@ namespace my
 				throw std::length_error{ "matrix row should be equal to this range by length" };
 
 			for (Index i = 0; first_ != last_; ++first_, ++i) this->elems[i] = *first_;
+		}
+
+		std::vector<T> to_std_vector() const
+		{
+			std::vector<T> result(sz);
+			std::copy(elems, elems + sz, std::begin(result));
+			return result;
 		}
 
 		iterator begin() { return iterator(this->elems); }

@@ -49,6 +49,14 @@ int main(int argc, char** argv)
 
 		std::cout << nullmtx << std::endl;
 
+		std::cout << "Converted to vector:" << std::endl;
+		std::cout << "[ ";
+		for (const auto& i : nullmtx[0].to_std_vector())
+		{
+			std::cout << i << " ";
+		}
+		std::cout << "]" << std::endl;
+
 		timer.stop();
 		timer.log_curr_time();
 	}
