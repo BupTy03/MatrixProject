@@ -388,6 +388,23 @@ namespace my
 		template<class Container>
 		void add_row(const Container& cont) { add_row(std::cbegin(cont), std::cend(cont)); }
 
+		template<class It>
+		void add_column(It first, It last)
+		{
+			auto dist_ = std::distance(first, last);
+			if (dist_ != this->sz.row)
+				throw std::out_of_range{ "rows count is not equal to new column" };
+
+			reserve(size_type(this->sz.row, this->sz.col + 1));
+
+			for (Index i = 0; i < dist_; ++i, ++first)
+				(this->alloc.inner_allocator()).construct(&(this->elem[i][this->sz.col]), *first);
+
+			this->sz.col += 1;
+		}
+		template<class Container>
+		void add_column(const Container& cont) { add_column(std::cbegin(cont), std::cend(cont)); }
+
 		friend std::ostream& operator<<(std::ostream& os, const matrix& mtx)
 		{
 			auto size_mtx = mtx.size();

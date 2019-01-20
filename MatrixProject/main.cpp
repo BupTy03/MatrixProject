@@ -25,7 +25,7 @@ int main(int argc, char** argv)
 		mtx.add_row(arr);
 		mtx.add_row(arr);
 
-		mtx.row(2) = { -1, -1, -1, -1 };
+		mtx.row(2) = { 1, 1, 1, 1 };
 
 		std::cout << mtx << std::endl;
 
@@ -56,6 +56,13 @@ int main(int argc, char** argv)
 			std::cout << i << " ";
 		}
 		std::cout << "]" << std::endl;
+
+		std::cout << "Adding column to vector:" << std::endl;
+		int arr2[3];
+		std::iota(std::begin(arr2), std::end(arr2), 0);
+		nullmtx.add_column(arr2);
+
+		std::cout << nullmtx << std::endl;
 
 		timer.stop();
 		timer.log_curr_time();
