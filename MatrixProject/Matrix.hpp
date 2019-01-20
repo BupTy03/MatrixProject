@@ -385,8 +385,61 @@ namespace my
 
 			this->sz.row += 1;
 		}
+
 		template<class Container>
 		void add_row(const Container& cont) { add_row(std::cbegin(cont), std::cend(cont)); }
+
+		template<class It>
+		iterator insert_row(Index indx, It first, It last)
+		{
+			range_check(indx, this->sz.row);
+
+			auto dist_ = std::distance(first, last);
+			if (dist_ != this->sz.col)
+				throw std::out_of_range{ "cols count is not equal to new row" };
+
+			reserve(size_type(this->sz.row + 1, this->sz.col));
+			for (Index i = this->sz.row; i > indx; --i)
+				std::swap(this->elem[i], this->elem[i - 1]);
+
+			for (Index i = 0; i < dist_; ++i, ++first)
+				(this->alloc.inner_allocator()).construct(&(this->elem[indx][i]), *first);
+
+			this->sz.row++;
+			return iterator(this->elem + indx, this->sz.col);
+		}
+
+		template<class Container>
+		iterator insert_row(Index indx, const Container& cont) 
+		{ 
+			return insert_row(indx, std::begin(cont), std::end(cont)); 
+		}
+
+		template<class It>
+		iterator insert_row(iterator pos, It first, It last)
+		{
+			Index indx = std::distance(this->begin(), pos);
+			return insert_row(indx, first, last);
+		}
+
+		template<class It>
+		iterator insert_row(const_iterator pos, It first, It last)
+		{
+			Index indx = std::distance(this->cbegin(), pos);
+			return insert_row(indx, first, last);
+		}
+
+		template<class Container>
+		iterator insert_row(iterator pos, const Container& cont)
+		{
+			return insert_row(pos, std::begin(cont), std::end(cont));
+		}
+
+		template<class Container>
+		iterator insert_row(const_iterator pos, const Container& cont)
+		{
+			return insert_row(pos, std::begin(cont), std::end(cont));
+		}
 
 		template<class It>
 		void add_column(It first, It last)
@@ -539,6 +592,11 @@ namespace my
 			this->operator--();
 			return _tmp;
 		}
+		
+		inline Index operator-(const MatrixIterator& other) { return this->p - other.p; }
+
+		inline MatrixIterator operator+(Index indx) { return MatrixIterator(p + indx, row_.sz); }
+		inline MatrixIterator operator-(Index indx) { return MatrixIterator(p - indx, row_.sz); }
 	private:
 		T** p{};
 		matrix<T, A>::Row row_{};
@@ -583,6 +641,11 @@ namespace my
 			this->operator--();
 			return _tmp;
 		}
+
+		inline Index operator-(const ConstMatrixIterator& other) { return this->p - other.p; }
+
+		inline ConstMatrixIterator operator+(Index indx) { return ConstMatrixIterator(p + indx, row_.sz); }
+		inline ConstMatrixIterator operator-(Index indx) { return ConstMatrixIterator(p - indx, row_.sz); }
 	private:
 		T** p{};
 		matrix<T, A>::Row row_{};
@@ -752,6 +815,11 @@ namespace my
 			this->operator--();
 			return _tmp;
 		}
+
+		inline Index operator-(const MatrixRowIterator& other) { return this->p - other.p; }
+
+		inline MatrixRowIterator operator+(Index indx) { return MatrixRowIterator(p + indx); }
+		inline MatrixRowIterator operator-(Index indx) { return MatrixRowIterator(p - indx); }
 	private:
 		T* p{};
 	};
@@ -793,6 +861,11 @@ namespace my
 			this->operator--();
 			return _tmp;
 		}
+
+		Index operator-(const ConstMatrixRowIterator& other) { return this->p - other.p; }
+
+		inline ConstMatrixRowIterator operator+(Index indx) { return ConstMatrixRowIterator(p + indx); }
+		inline ConstMatrixRowIterator operator-(Index indx) { return ConstMatrixRowIterator(p - indx); }
 	private:
 		const T* p{};
 	};

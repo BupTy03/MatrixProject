@@ -64,6 +64,11 @@ int main(int argc, char** argv)
 
 		std::cout << nullmtx << std::endl;
 
+		int arr3[5]{ 0 };
+		nullmtx.insert_row(nullmtx.begin() + 2, arr3);
+
+		std::cout << nullmtx << std::endl;
+
 		timer.stop();
 		timer.log_curr_time();
 	}
