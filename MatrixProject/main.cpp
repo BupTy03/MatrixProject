@@ -11,14 +11,21 @@ int main(int argc, char** argv)
 	system("chcp 1251");
 	system("cls");
 
-	my::SimpleTimer<std::chrono::nanoseconds> timer;
+	my::SimpleTimer<std::chrono::microseconds> timer;
 
 	try {
 		timer.start();
 
-		my::matrix<int> mtx;
-		mtx.resize_rows(3);
-		mtx.resize_cols(4);
+		my::matrix<int> mtx(3, 3);
+
+		int counter{ 0 };
+		for (auto& row : mtx)
+		{
+			for (auto& i : row)
+			{
+				i = ++counter;
+			}
+		}
 
 		std::cout << mtx << std::endl;
 
