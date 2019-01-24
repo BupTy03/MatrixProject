@@ -16,58 +16,11 @@ int main(int argc, char** argv)
 	try {
 		timer.start();
 
-		my::matrix<int> mtx(0, 4);
-
-		int arr[4];
-		std::iota(std::begin(arr), std::end(arr), 0);
-
-		mtx.add_row(arr);
-		mtx.add_row(arr);
-		mtx.add_row(arr);
-
-		mtx.row(2) = { 1, 1, 1, 1 };
+		my::matrix<int> mtx;
+		mtx.resize_rows(3);
+		mtx.resize_cols(4);
 
 		std::cout << mtx << std::endl;
-
-		for (auto rit = mtx.rcbegin(); rit != mtx.rcend(); ++rit)
-		{
-			for (auto it = rit.base()->begin(); it != rit.base()->end(); ++it)
-			{
-				std::cout << *it << std::endl;
-			}
-		}
-
-		mtx.swap_cols(0, 3);
-
-		std::cout << mtx << std::endl;
-
-		my::matrix<int> nullmtx(mtx.size(), 0);
-
-		std::cout << nullmtx << std::endl;
-
-		nullmtx.swap(mtx);
-
-		std::cout << nullmtx << std::endl;
-
-		std::cout << "Converted to vector:" << std::endl;
-		std::cout << "[ ";
-		for (const auto& i : nullmtx[0].to_std_vector())
-		{
-			std::cout << i << " ";
-		}
-		std::cout << "]" << std::endl;
-
-		std::cout << "Adding column to vector:" << std::endl;
-		int arr2[3];
-		std::iota(std::begin(arr2), std::end(arr2), 0);
-		nullmtx.add_column(arr2);
-
-		std::cout << nullmtx << std::endl;
-
-		int arr3[5]{ 0 };
-		nullmtx.insert_row(nullmtx.begin() + 2, arr3);
-
-		std::cout << nullmtx << std::endl;
 
 		timer.stop();
 		timer.log_curr_time();

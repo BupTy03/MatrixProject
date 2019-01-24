@@ -26,14 +26,6 @@ namespace my
 
 	using Index = int;
 
-	struct matrix_size
-	{
-		matrix_size() {}
-		explicit matrix_size(Index x, Index y) : row{ x }, col{ y } {}
-		Index row{};
-		Index col{};
-	};
-
 	template<class T, class A>
 	struct MatrixBase
 	{
@@ -43,18 +35,18 @@ namespace my
 		MatrixBase() {}
 		explicit MatrixBase(const allocator_type& al_) : alloc{ row_allocator(), al_} {}
 
-		explicit MatrixBase(const allocator_type& al_, matrix_size size_mtx)
-			: alloc{ row_allocator(), al_ }, sz{ size_mtx }, space{ size_mtx }
+		explicit MatrixBase(const allocator_type& al_, Index r, Index c)
+			: sz{ r, c }, space{ r, c }, alloc{ row_allocator(), al_ }
 		{
-			if (size_mtx.row < 0 || size_mtx.col < 0)
+			if (r < 0 || c < 0)
 				throw std::invalid_argument{ "matrix_size arguments must be positive" };
 
-			if (size_mtx.row == 0) return;
-			elem = alloc.allocate(size_mtx.row);
+			if (r == 0) return;
+			elem = alloc.allocate(r);
 
-			if (size_mtx.col == 0) return;
-			for (Index i = 0; i < size_mtx.row; ++i)
-				elem[i] = (alloc.inner_allocator()).allocate(size_mtx.col);
+			if (c == 0) return;
+			for (Index i = 0; i < r; ++i)
+				elem[i] = (alloc.inner_allocator()).allocate(c);
 		}
 
 		~MatrixBase() 
@@ -134,10 +126,16 @@ namespace my
 			this->alloc.deallocate(this->elem, this->space.row);
 		}
 
-		std::scoped_allocator_adaptor<row_allocator, allocator_type> alloc;
-		T** elem{};
+		struct matrix_size
+		{
+			Index row{};
+			Index col{};
+		};
+
 		matrix_size sz;
 		matrix_size space;
+		T** elem{};
+		std::scoped_allocator_adaptor<row_allocator, allocator_type> alloc;
 	};
 
 	template<class T, class A = std::allocator<T>>
@@ -152,7 +150,7 @@ namespace my
 		class ConstMatrixIterator;
 
 		using allocator_type = A;
-		using size_type = matrix_size;
+		using size_type = Index;
 		using value_type = T;
 		using iterator = MatrixIterator;
 		using const_iterator = ConstMatrixIterator;
@@ -162,13 +160,10 @@ namespace my
 		{ initialize(); }
 		explicit matrix(const allocator_type& al) : MBase(al) {}
 		explicit matrix(Index x, Index y, const allocator_type& al = allocator_type())
-			: MBase(al, size_type(x, y))
+			: MBase(al, x, y)
 		{ initialize(); }
 		explicit matrix(Index x, Index y, const value_type& val, const allocator_type& al = allocator_type())
-			: MBase(al, size_type(x, y))
-		{ initialize(val); }
-		explicit matrix(size_type sz, const value_type& val, const allocator_type& al = allocator_type())
-			: MBase(al, sz)
+			: MBase(al, x, y)
 		{ initialize(val); }
 
 		matrix(const matrix& other) : MBase(other.alloc, other.sz)
@@ -213,8 +208,10 @@ namespace my
 					(this->alloc.inner_allocator()).destroy(&(this->elem[i][j]));
 		}
 
-		size_type size() const { return this->sz; }
-		size_type capacity() const { return this->space; }
+		Index count_rows() const { return this->sz.row; }
+		Index count_cols() const { return this->sz.col; }
+		Index capacity_rows() const { return this->space.row; }
+		Index capacity_cols() const { return this->space.col; }
 
 		T** data() { return this->elem; }
 		const T* const* data() const { return this->elem; }
@@ -280,95 +277,124 @@ namespace my
 				std::swap(this->elem[i][c1], this->elem[i][c2]);
 		}
 
-		void reserve(size_type newalloc)
+		void reserve_rows(Index newalloc)
 		{
-			if (newalloc.row > this->space.row && newalloc.row == 0)
+			if (newalloc > this->space.row)
 			{
-				this->elem = this->alloc.allocate(newalloc.row);
-				this->space.row = newalloc.row;
-
-				Index new_all_col = std::max(newalloc.col, this->space.col);
-				if (new_all_col > 0)
+				if (this->sz.row == 0)
 				{
-					for (Index i = 0; i < this->space.row; ++i)
-						(this->alloc.inner_allocator()).allocate(new_all_col);
-				}
+					this->elem = this->alloc.allocate(newalloc);
+					this->space.row = newalloc;
 
-				return;
-			}
-
-			if (newalloc.col > this->space.col)
-			{
-				if (this->space.col == 0)
-				{
-					for (Index i = 0; i < this->space.row; ++i)
-						this->elem[i] = (this->alloc.inner_allocator()).allocate(newalloc.col);
-
-					this->space.col = newalloc.col;
-				}
-				else
-				{
-					for (Index i = 0; i < this->sz.row; ++i)
+					if (this->space.col > 0)
 					{
-						auto new_row = this->make_row(newalloc.col);
-
-						if (std::is_nothrow_move_constructible_v<T>)
-							my_uninitialized_move(this->elem[i], &(this->elem[i][this->sz.col]), new_row.get());
-						else
-							std::uninitialized_copy(this->elem[i], &(this->elem[i][this->sz.col]), new_row.get());
-
-						this->delete_row(i);
-						this->elem[i] = new_row.release();
-
-						this->space.col = newalloc.col;
+						for (Index i = 0; i < this->space.row; ++i)
+							(this->alloc.inner_allocator()).allocate(this->space.col);
 					}
-				}
-			}
 
-			if (newalloc.row > this->space.row)
-			{
-				auto new_mtx = this->make_matrix(newalloc.row);
+					return;
+				}
+
+				auto new_mtx = this->make_matrix(newalloc);
 
 				std::copy(this->elem, &(this->elem[this->sz.row]), new_mtx.get());
 
-				for (Index i = this->sz.row; i < newalloc.row; ++i)
+				for (Index i = this->sz.row; i < newalloc; ++i)
 					new_mtx[i] = (this->alloc.inner_allocator()).allocate(this->space.col);
 
 				this->delete_matrix();
 				this->elem = new_mtx.release();
 
-				this->space.row = newalloc.row;
+				this->space.row = newalloc;
 			}
 		}
-		void reserve(Index newalloc_row, Index newalloc_col)
+		void reserve_cols(Index newalloc)
 		{
-			reserve(size_type(newalloc_row, newalloc_col));
+			if (this->sz.row == 0)
+				throw std::out_of_range{ "unable to reserve cols in matrix which has 0 rows" };
+
+			if (newalloc > this->space.col)
+			{
+				if (this->space.col == 0)
+				{
+					for (Index i = 0; i < this->space.row; ++i)
+						this->elem[i] = (this->alloc.inner_allocator()).allocate(newalloc);
+
+					this->space.col = newalloc;
+					return;
+				}
+				
+				for (Index i = 0; i < this->sz.row; ++i)
+				{
+					auto new_row = this->make_row(newalloc);
+
+					if (std::is_nothrow_move_constructible_v<T>)
+					{
+						my_uninitialized_move(this->elem[i], &(this->elem[i][this->sz.col]), new_row.get());
+					}
+					else
+					{
+						std::uninitialized_copy(this->elem[i], &(this->elem[i][this->sz.col]), new_row.get());
+					}
+
+					this->delete_row(i);
+					this->elem[i] = new_row.release();
+
+					this->space.col = newalloc;
+				}				
+			}
 		}
 
-		void resize(size_type newsize)
+		void resize_rows(Index newsize)
 		{
-			reserve(newsize);
-			if (newsize.col > this->sz.col)
+			reserve_rows(newsize);
+			if (newsize > this->sz.row)
+			{
+				T val{};
+				for (Index i = this->sz.row; i < newsize; ++i)
+					for (Index j = 0; j < this->sz.col; ++j)
+						(this->alloc.inner_allocator()).construct(&(this->elem[i][j]), val);
+
+				this->sz.row = newsize;
+			}
+		}
+		void resize_rows(Index newsize, const T& val)
+		{
+			reserve_rows(newsize);
+			if (newsize > this->sz.row)
+			{
+				for (Index i = this->sz.row; i < newsize; ++i)
+					for (Index j = 0; j < this->sz.col; ++j)
+						(this->alloc.inner_allocator()).construct(&(this->elem[i][j]), val);
+
+				this->sz.row = newsize;
+			}
+		}
+
+		void resize_cols(Index newsize)
+		{
+			reserve_cols(newsize);
+			if (newsize > this->sz.col)
+			{
+				T val{};
+				for (Index i = 0; i < this->sz.row; ++i)
+					for (Index j = this->sz.col; j < newsize; ++j)
+						(this->alloc.inner_allocator()).construct(&(this->elem[i][j]), val);
+
+				this->sz.col = newsize;
+			}
+		}
+		void resize_cols(Index newsize, const T& val)
+		{
+			reserve_cols(newsize);
+			if (newsize > this->sz.col)
 			{
 				for (Index i = 0; i < this->sz.row; ++i)
-					for (Index j = this->sz.col; j < newsize.col; ++j)
-						(this->alloc.inner_allocator()).construct(&(this->elem[i][j]));
+					for (Index j = this->sz.col; j < newsize; ++j)
+						(this->alloc.inner_allocator()).construct(&(this->elem[i][j]), val);
 
-				this->sz.col = newsize.col;
+				this->sz.col = newsize;
 			}
-
-			if (newsize.row > this->sz.row)
-			{
-				for (Index i = this->sz.row; i < newsize.row; ++i)
-					for (Index j = 0; j < this->sz.col; ++j)
-						(this->alloc.inner_allocator()).construct(&(this->elem[i][j]));
-
-				this->sz.row = newsize.row;
-			}
-		}
-		void resize(Index newsize_row, Index newsize_col)
-		{
-			resize(size_type(newsize_row, newsize_col));
 		}
 
 		template<class It>
@@ -460,12 +486,11 @@ namespace my
 
 		friend std::ostream& operator<<(std::ostream& os, const matrix& mtx)
 		{
-			auto size_mtx = mtx.size();
-			for (Index i = 0; i < size_mtx.row; ++i)
+			for (Index i = 0; i < mtx.sz.row; ++i)
 			{
 				os << "| ";
-				for (Index j = 0; j < size_mtx.col; ++j)
-					os << (mtx.row(i)).at(j) << " ";
+				for (Index j = 0; j < mtx.sz.col; ++j)
+					os << mtx[i][j] << " ";
 
 				os << "|" << std::endl;
 			}			
@@ -554,7 +579,7 @@ namespace my
 	};
 
 	template<class T, class A>
-	class matrix<T, A>::MatrixIterator : public std::iterator<std::input_iterator_tag, T>
+	class matrix<T, A>::MatrixIterator : public std::iterator<std::random_access_iterator_tag, T>
 	{
 		friend class matrix<T, A>;
 	private:
@@ -603,7 +628,7 @@ namespace my
 	};
 
 	template<class T, class A>
-	class matrix<T, A>::ConstMatrixIterator : public std::iterator<std::input_iterator_tag, T, ptrdiff_t, T*, const T&>
+	class matrix<T, A>::ConstMatrixIterator : public std::iterator<std::random_access_iterator_tag, T, ptrdiff_t, T*, const T&>
 	{
 		friend class matrix<T, A>;
 	private:
@@ -780,7 +805,7 @@ namespace my
 	};
 
 	template<class T, class A>
-	class matrix<T, A>::Row::MatrixRowIterator : public std::iterator<std::input_iterator_tag, T>
+	class matrix<T, A>::Row::MatrixRowIterator : public std::iterator<std::random_access_iterator_tag, T>
 	{
 		friend class matrix<T, A>;
 	private:
@@ -825,7 +850,7 @@ namespace my
 	};
 
 	template<class T, class A>
-	class matrix<T, A>::Row::ConstMatrixRowIterator : public std::iterator<std::input_iterator_tag, T, ptrdiff_t, T*, const T&>
+	class matrix<T, A>::Row::ConstMatrixRowIterator : public std::iterator<std::random_access_iterator_tag, T, ptrdiff_t, T*, const T&>
 	{
 		friend class matrix<T, A>;
 	private:
