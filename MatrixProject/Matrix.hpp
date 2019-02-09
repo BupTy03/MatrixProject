@@ -591,8 +591,16 @@ namespace my
 
 		inline bool operator==(MatrixIterator const& other) const { return p == other.p; }
 		inline bool operator!=(MatrixIterator const& other) const { return p != other.p; }
+
+		inline bool operator<(MatrixIterator const& other) const { return p < other.p; }
+		inline bool operator>(MatrixIterator const& other) const { return p > other.p; }
+
+		inline bool operator<=(MatrixIterator const& other) const { return p <= other.p; }
+		inline bool operator>=(MatrixIterator const& other) const { return p >= other.p; }
+
 		inline matrix<T, A>::Row& operator*() { return row_; }
 		inline matrix<T, A>::Row* operator->() noexcept { return &row_; }
+
 		inline MatrixIterator& operator++()
 		{
 			++p;
@@ -605,6 +613,7 @@ namespace my
 			this->operator++();
 			return _tmp;
 		}
+
 		inline MatrixIterator& operator--()
 		{
 			--p;
@@ -640,8 +649,16 @@ namespace my
 
 		inline bool operator==(ConstMatrixIterator const& other) const noexcept { return p == other.p; }
 		inline bool operator!=(ConstMatrixIterator const& other) const noexcept { return p != other.p; }
+
+		inline bool operator<(ConstMatrixIterator const& other) const noexcept { return p < other.p; }
+		inline bool operator>(ConstMatrixIterator const& other) const noexcept { return p > other.p; }
+
+		inline bool operator<=(ConstMatrixIterator const& other) const noexcept { return p <= other.p; }
+		inline bool operator>=(ConstMatrixIterator const& other) const noexcept { return p >= other.p; }
+
 		inline const matrix<T, A>::Row& operator*() const noexcept { return row_; }
 		inline const matrix<T, A>::Row* operator->() const noexcept { return &row_; }
+
 		inline ConstMatrixIterator& operator++() noexcept
 		{
 			++p;
@@ -654,6 +671,7 @@ namespace my
 			this->operator++();
 			return _tmp;
 		}
+
 		inline ConstMatrixIterator& operator--()
 		{
 			--p;
@@ -817,7 +835,16 @@ namespace my
 
 		inline bool operator==(MatrixRowIterator const& other) const noexcept { return p == other.p; }
 		inline bool operator!=(MatrixRowIterator const& other) const noexcept { return p != other.p; }
+
+		inline bool operator<(MatrixRowIterator const& other) const noexcept { return p < other.p; }
+		inline bool operator>(MatrixRowIterator const& other) const noexcept { return p > other.p; }
+
+		inline bool operator<=(MatrixRowIterator const& other) const noexcept { return p <= other.p; }
+		inline bool operator>=(MatrixRowIterator const& other) const noexcept { return p >= other.p; }
+
 		inline T& operator*() const noexcept { return *p; }
+		inline T* operator->() const noexcept { return p; }
+
 		inline MatrixRowIterator& operator++() noexcept
 		{
 			++p;
@@ -829,6 +856,7 @@ namespace my
 			this->operator++();
 			return _tmp;
 		}
+
 		inline MatrixRowIterator& operator--() noexcept
 		{
 			--p;
@@ -862,8 +890,16 @@ namespace my
 
 		inline bool operator==(ConstMatrixRowIterator const& other) const noexcept { return p == other.p; }
 		inline bool operator!=(ConstMatrixRowIterator const& other) const noexcept { return p != other.p; }
+
+		inline bool operator<(ConstMatrixRowIterator const& other) const noexcept { return p < other.p; }
+		inline bool operator>(ConstMatrixRowIterator const& other) const noexcept { return p > other.p; }
+
+		inline bool operator<=(ConstMatrixRowIterator const& other) const noexcept { return p <= other.p; }
+		inline bool operator>=(ConstMatrixRowIterator const& other) const noexcept { return p >= other.p; }
+
 		inline const T& operator*() const noexcept { return *p; }
 		inline const T* operator->() const noexcept { return p; }
+
 		inline ConstMatrixRowIterator& operator++() noexcept
 		{
 			++p;
@@ -875,6 +911,7 @@ namespace my
 			this->operator++();
 			return _tmp;
 		}
+
 		inline ConstMatrixRowIterator& operator--() noexcept
 		{
 			--p;
